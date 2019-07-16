@@ -1,0 +1,51 @@
+version: "3"
+services:
+  app:
+    build: .
+    image: robertpountney71/jpetstore:1.0 # Used to pull image from registry when deploying
+    deploy:
+      mode: global
+    # deploy:
+    #   # placement:
+    #   #   constraints: [node.role == worker] # As we have two application server this should deploy app container to both
+    #   replicas: 2
+    ports:
+      - 8080:8080
+    environment:
+      - SERVICE_PORTS=8080
+    networks:
+      - web # Network for our application and DB combined
+  proxy:
+    image: dockercloud/haproxy
+    depends_on:
+      - app # it won’t boot until the app service is finished (i.e. all of the container are up and running)
+    environment:
+      # - BALANCE=leastconn
+        - ADDITIONAL_SERVICES=project_dir:app
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 80:80
+    networks:
+      - web
+    deploy:
+      placement:
+        constraints: [node.role == manager] # Always place web server on manager node 
+  # db:
+  #   image: mysql:latest
+  #   volumes:
+  #     - db_volume:/var/lib/mysql
+  #   restart: always
+  #   ports:
+  #     - 3307:3306
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: mysql-petclinic
+  #     MYSQL_DATABASE: cabin
+  #     MYSQL_USER: cabin
+  #     MYSQL_PASSWORD: cabinpw
+  #   networks:
+  #     - web
+
+networks:
+  web:
+    driver: overlay 
